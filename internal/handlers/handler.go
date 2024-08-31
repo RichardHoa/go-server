@@ -2,16 +2,30 @@ package handlers
 
 import (
 	"encoding/json"
-	"net/http"
-	"sync"
 	"fmt"
+	"net/http"
 	"os"
+	"sync"
+	"strconv"
 )
 
 type Chirp struct {
-	ID int
+	ID   int `json:"id"`
 	Body string `json:"body"`
 }
+
+
+// Getter for ID
+func (c *Chirp) GetID() int {
+	return c.ID
+}
+
+// Setter for ID
+func (c *Chirp) SetID(id int) {
+	c.ID = id
+}
+
+
 
 var (
 	currentID = 1
@@ -26,13 +40,6 @@ func HandlerReadiness(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandlerAddChirps(w http.ResponseWriter, r *http.Request) {
-	// Check that the request method is POST
-	if r.Method != http.MethodPost {
-		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Parse the JSON body
 	var chirp Chirp
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&chirp); err != nil {
@@ -40,37 +47,27 @@ func HandlerAddChirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate the chirp body
-	if len(chirp.Body) == 0 {
-		http.Error(w, `{"error": "Chirp is empty"}`, http.StatusBadRequest)
-		return
-	}
-	if len(chirp.Body) > 140 {
-		http.Error(w, `{"error": "Chirp is too long"}`, http.StatusBadRequest)
-		return
-	}
-
-	// Replace sensitive words in the chirp body
-	chirp.Body = ReplaceSensitiveWords(chirp.Body)
-
-	// Synchronize access to the currentID and database
 	mutex.Lock()
-	// Set chirp ID and increment global ID counter
-	chirp.ID = currentID
+	chirp.SetID(currentID) // Use the setter method
 	currentID++
 	mutex.Unlock()
 
+	// fmt.Printf("Chirp: %+v\n", chirp)
+	// Access ID with chirp.GetID() when needed
 
-	// Add chirp to database
 	if err := addChirpToDatabase(chirp); err != nil {
 		http.Error(w, fmt.Sprintf(`{"error": "Failed to save chirp: %v"}`, err), http.StatusInternalServerError)
 		return
 	}
 
-	// Send the chirp back in the response
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(chirp); err != nil {
+	w.WriteHeader(http.StatusCreated)
+	// Include ID in the response explicitly
+	response := map[string]interface{}{
+		"id":   chirp.GetID(),
+		"body": chirp.Body,
+	}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
 	}
 }
@@ -97,17 +94,43 @@ func HandlerGetChirps(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf(`{"error": "Failed to read chirps: %v"}`, err), http.StatusInternalServerError)
 		return
 	}
-
-	// Check if the file content is valid JSON
-	var jsonData map[string]interface{}
-	if err := json.Unmarshal(fileBytes, &jsonData); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error": "Invalid JSON format: %v"}`, err), http.StatusInternalServerError)
-		return
-	}
-
-	// Set the response headers and write the JSON data
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(fileBytes)
+// Parse the JSON file content into a map
+var jsonData struct {
+	Chirps map[string]struct {
+		Body string `json:"body"`
+	} `json:"chirps"`
 }
 
+if err := json.Unmarshal(fileBytes, &jsonData); err != nil {
+	http.Error(w, fmt.Sprintf(`{"error": "Invalid JSON format: %v"}`, err), http.StatusInternalServerError)
+	return
+}
+
+// Convert the map to a slice of Chirp structs
+chirpsArray := []Chirp{}
+for idStr, chirpData := range jsonData.Chirps {
+	// fmt.Printf("ID: %s, Body: %s\n", idStr, chirpData.Body)
+	// Convert string id to int
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Invalid chirp ID: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+	chirp := Chirp{
+		Body: chirpData.Body,
+	}
+	chirp.SetID(id)
+	// fmt.Printf("Chrip: %v\n", chirp)
+
+	// Append the chirp to the array with the correct ID and body
+	chirpsArray = append(chirpsArray,chirp)
+	// fmt.Printf("Chirps: %v\n", chirpsArray)
+}
+
+// Set the response headers and write the JSON array of chirps
+w.Header().Set("Content-Type", "application/json")
+w.WriteHeader(http.StatusOK)
+if err := json.NewEncoder(w).Encode(chirpsArray); err != nil {
+	http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
+}
+}

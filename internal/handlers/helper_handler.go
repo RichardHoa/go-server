@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
-	"strings"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func ReplaceSensitiveWords(text string) string {
@@ -34,7 +34,6 @@ func ReplaceSensitiveWords(text string) string {
 	return strings.Join(words, " ")
 }
 
-
 func endsWithPunctuation(word string) bool {
 	return len(word) > 0 && strings.ContainsAny(word[len(word)-1:], ".,!?")
 }
@@ -42,6 +41,7 @@ func endsWithPunctuation(word string) bool {
 func addChirpToDatabase(chirp Chirp) error {
 	// Define the file path
 	filePath := "database.json"
+	// fmt.Printf("Chirp inside function: %+v\n", chirp)
 
 	// Initialize an empty map to hold the chirps
 	data := map[string]map[string]Chirp{
@@ -61,7 +61,7 @@ func addChirpToDatabase(chirp Chirp) error {
 	}
 
 	// Add the new chirp
-	data["chirps"][fmt.Sprint(chirp.ID)] = chirp
+	data["chirps"][fmt.Sprint(chirp.GetID())] = chirp
 
 	// Write the updated data back to the file
 	fileBytes, err := json.MarshalIndent(data, "", "  ")
