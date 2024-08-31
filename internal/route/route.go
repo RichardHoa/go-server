@@ -20,5 +20,7 @@ func ConfigureRoutes(mux *http.ServeMux, apiCfg *config.ApiConfig) {
 
 	mux.HandleFunc("GET /admin/metrics", apiCfg.HandlerMetricsHTML)	
 
-	mux.HandleFunc("POST /api/validate_chirp", handlers.HandlerValidateChirp)
+	mux.HandleFunc("POST /api/chirps", handlers.HandlerAddChirps)
+
+	mux.HandleFunc("GET /api/chirps", handlers.HandlerGetChirps)
 }

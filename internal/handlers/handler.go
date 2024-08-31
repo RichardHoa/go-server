@@ -1,17 +1,22 @@
 package handlers
 
 import (
-	// "fmt"
 	"encoding/json"
 	"net/http"
-	// "regexp"
-	"strings"
-	// "github.com/RichardHoa/go-server/internal/config"
+	"sync"
+	"fmt"
+	"os"
 )
 
 type Chirp struct {
+	ID int
 	Body string `json:"body"`
 }
+
+var (
+	currentID = 1
+	mutex     sync.Mutex
+)
 
 // HandlerReadiness handles the /healthz endpoint
 func HandlerReadiness(w http.ResponseWriter, r *http.Request) {
@@ -20,7 +25,7 @@ func HandlerReadiness(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(http.StatusText(http.StatusOK)))
 }
 
-func HandlerValidateChirp(w http.ResponseWriter, r *http.Request) {
+func HandlerAddChirps(w http.ResponseWriter, r *http.Request) {
 	// Check that the request method is POST
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
@@ -46,44 +51,63 @@ func HandlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Replace sensitive words in the chirp body
-	cleanedBody := ReplaceSensitiveWords(chirp.Body)
+	chirp.Body = ReplaceSensitiveWords(chirp.Body)
 
-	// If validation passes, respond with a 200 status code
-	response := map[string]string{"cleaned_body": cleanedBody}
+	// Synchronize access to the currentID and database
+	mutex.Lock()
+	// Set chirp ID and increment global ID counter
+	chirp.ID = currentID
+	currentID++
+	mutex.Unlock()
+
+
+	// Add chirp to database
+	if err := addChirpToDatabase(chirp); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to save chirp: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	// Send the chirp back in the response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
+	if err := json.NewEncoder(w).Encode(chirp); err != nil {
 		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
 	}
-
 }
 
 
-func ReplaceSensitiveWords(text string) string {
-	wordsToReplace := map[string]bool{
-		"kerfuffle": true,
-		"sharbert":  true,
-		"fornax":    true,
+func HandlerGetChirps(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+		return
 	}
 
-	// Split the text into words
-	words := strings.Fields(text)
-	for i, word := range words {
-		// Check for punctuation at the end of the word
-		if endsWithPunctuation(word) {
-			continue
-		}
-		if _, found := wordsToReplace[strings.ToLower(word)]; found {
-			// Replace the word if it should be replaced
-			words[i] = strings.ReplaceAll(word, word, "****")
-		}
+	// Define the file path
+	filePath := "database.json"
+
+	// Check if the file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		http.Error(w, `{"error": "No chirps found"}`, http.StatusNotFound)
+		return
 	}
 
-	// Join the words back into a single string
-	return strings.Join(words, " ")
+	// Read the file contents
+	fileBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to read chirps: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	// Check if the file content is valid JSON
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(fileBytes, &jsonData); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Invalid JSON format: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	// Set the response headers and write the JSON data
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(fileBytes)
 }
 
-
-func endsWithPunctuation(word string) bool {
-	return len(word) > 0 && strings.ContainsAny(word[len(word)-1:], ".,!?")
-}
