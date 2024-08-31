@@ -23,4 +23,6 @@ func ConfigureRoutes(mux *http.ServeMux, apiCfg *config.ApiConfig) {
 	mux.HandleFunc("POST /api/chirps", handlers.HandlerAddChirps)
 
 	mux.HandleFunc("GET /api/chirps", handlers.HandlerGetChirps)
+
+	mux.HandleFunc("GET /api/chirps/", handlers.HandlerGetChirpsID)
 }
