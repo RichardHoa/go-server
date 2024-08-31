@@ -11,23 +11,14 @@ import (
 	
 )
 
-type Chirp struct {
-	ID   int    `json:"id"`
-	Body string `json:"body"`
-}
 
-// Getter for ID
-func (c *Chirp) GetID() int {
-	return c.ID
-}
 
-// Setter for ID
-func (c *Chirp) SetID(id int) {
-	c.ID = id
-}
+
+
 
 var (
-	currentID = 1
+	chirpsID = 1
+	usersID  = 1
 	mutex     sync.Mutex
 )
 
@@ -47,14 +38,14 @@ func HandlerAddChirps(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mutex.Lock()
-	chirp.SetID(currentID) // Use the setter method
-	currentID++
+	chirp.SetID(chirpsID) // Use the setter method
+	chirpsID++
 	mutex.Unlock()
 
 	// fmt.Printf("Chirp: %+v\n", chirp)
 	// Access ID with chirp.GetID() when needed
 
-	if err := addChirpToDatabase(chirp); err != nil {
+	if err := addDataToDatabase(chirp, "chirps"); err != nil {
 		http.Error(w, fmt.Sprintf(`{"error": "Failed to save chirp: %v"}`, err), http.StatusInternalServerError)
 		return
 	}

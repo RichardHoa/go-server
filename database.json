@@ -1,12 +1,36 @@
 {
   "chirps": {
     "1": {
-      "id": 1,
-      "body": "I had something interesting for breakfast"
+      "body": "I need something for breakfast",
+      "id": 1
     },
     "2": {
-      "id": 2,
-      "body": "What about second breakfast?"
+      "body": "I need something for breakfast",
+      "id": 2
+    },
+    "3": {
+      "body": "I need something for breakfast",
+      "id": 3
+    },
+    "4": {
+      "body": "I need something for breakfast",
+      "id": 4
+    },
+    "5": {
+      "body": "I need something for breakfast",
+      "id": 5
+    },
+    "6": {
+      "body": "I need something for breakfast",
+      "id": 6
+    },
+    "7": {
+      "body": "I need something for breakfast",
+      "id": 7
+    },
+    "8": {
+      "id": 8,
+      "body": "I need something for breakfast"
     }
   }
 }

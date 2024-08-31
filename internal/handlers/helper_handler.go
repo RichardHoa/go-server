@@ -38,13 +38,13 @@ func endsWithPunctuation(word string) bool {
 	return len(word) > 0 && strings.ContainsAny(word[len(word)-1:], ".,!?")
 }
 
-func addChirpToDatabase(chirp Chirp) error {
+func addDataToDatabase(data DataPoint, category string) error {
 	// Define the file path
 	filePath := "database.json"
 	// fmt.Printf("Chirp inside function: %+v\n", chirp)
 
 	// Initialize an empty map to hold the chirps
-	data := map[string]map[string]Chirp{
+	database := map[string]map[string]interface{}{
 		"chirps": {},
 	}
 
@@ -55,16 +55,16 @@ func addChirpToDatabase(chirp Chirp) error {
 		if err != nil {
 			return fmt.Errorf("could not read file: %v", err)
 		}
-		if err := json.Unmarshal(fileBytes, &data); err != nil {
+		if err := json.Unmarshal(fileBytes, &database); err != nil {
 			return fmt.Errorf("could not unmarshal JSON: %v", err)
 		}
 	}
 
 	// Add the new chirp
-	data["chirps"][fmt.Sprint(chirp.GetID())] = chirp
+	database[category][fmt.Sprint(data.GetID())] = data
 
 	// Write the updated data back to the file
-	fileBytes, err := json.MarshalIndent(data, "", "  ")
+	fileBytes, err := json.MarshalIndent(database, "", "  ")
 	if err != nil {
 		return fmt.Errorf("could not marshal JSON: %v", err)
 	}
