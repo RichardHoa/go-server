@@ -5,14 +5,16 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/RichardHoa/go-server/internal/handlers"
-	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/RichardHoa/go-server/internal/handlers"
+	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type ApiConfig struct {
@@ -20,6 +22,12 @@ type ApiConfig struct {
 	JWTSecret      string
 	Mu             sync.Mutex // Mutex to ensure safe concurrent access to FileserverHits
 }
+
+var (
+	chirpsID = 1
+
+	mutex sync.Mutex
+)
 
 func (apiCfg *ApiConfig) MiddlewareMetricsInc(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -86,8 +94,11 @@ func (cfg *ApiConfig) HandlerAuthenticateUser(w http.ResponseWriter, r *http.Req
 	// Define the file path to the database
 	filePath := "database.json"
 
-	// Initialize a map to hold the data from the database
-	database := map[string]map[string]handlers.User{}
+	// Define a struct for the entire database
+
+
+	// Initialize the database struct
+	var database handlers.Database
 
 	// Read the database file
 	fileBytes, err := os.ReadFile(filePath)
@@ -96,14 +107,19 @@ func (cfg *ApiConfig) HandlerAuthenticateUser(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Parse the JSON data
+	// Parse the JSON data into the database struct
 	if err := json.Unmarshal(fileBytes, &database); err != nil {
 		http.Error(w, fmt.Sprintf(`{"error": "Failed to parse database: %v"}`, err), http.StatusInternalServerError)
 		return
 	}
 
+	// Ensure chirps is initialized if it's null
+	if database.Chirps == nil {
+		database.Chirps = make(map[string]handlers.Chirp)
+	}
+
 	// Extract the "users" map
-	users := database["users"]
+	users := database.Users
 
 	// Iterate over users to find a match by email
 	for _, storedUser := range users {
@@ -151,13 +167,14 @@ func (cfg *ApiConfig) HandlerAuthenticateUser(w http.ResponseWriter, r *http.Req
 			refreshToken := hex.EncodeToString(refreshTokenBytes)
 
 			// Store refresh token and its expiration date in the database
-			// Update the database file (or replace this with your actual database update logic)
 			storedUser.RefreshToken = refreshToken
 			storedUser.RefreshTokenExpiresAt = time.Now().UTC().Add(60 * 24 * time.Hour) // 60 days
 
-			// Write updated data back to the database
-			database["users"][fmt.Sprintf("%v", storedUser.GetID())] = storedUser
-			fileBytes, err = json.Marshal(database)
+			// Update the user in the database
+			database.Users[fmt.Sprintf("%v", storedUser.GetID())] = storedUser
+
+			// Write updated data back to the database, preserving chirps
+			fileBytes, err = json.MarshalIndent(database, "", "  ")
 			if err != nil {
 				http.Error(w, fmt.Sprintf(`{"error": "Failed to serialize database: %v"}`, err), http.StatusInternalServerError)
 				return
@@ -184,6 +201,7 @@ func (cfg *ApiConfig) HandlerAuthenticateUser(w http.ResponseWriter, r *http.Req
 	// If no user is found with the given email
 	http.Error(w, `{"error": "User email does not exist"}`, http.StatusNotFound)
 }
+
 
 func (cfg *ApiConfig) HandlerPutUser(w http.ResponseWriter, r *http.Request) {
 	// Ensure the method is PUT
@@ -472,3 +490,163 @@ func (cfg *ApiConfig) HandlerRevokeToken(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (cfg *ApiConfig) HandlerAddChirps(w http.ResponseWriter, r *http.Request) {
+	var chirp handlers.Chirp
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&chirp); err != nil {
+		http.Error(w, `{"error": "Invalid JSON"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Extract the access token from the Authorization header
+	authHeader := r.Header.Get("Authorization")
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		http.Error(w, `{"error": "Invalid or missing Authorization header"}`, http.StatusUnauthorized)
+		return
+	}
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+	cfg.Mu.Lock()
+	JWTSecret := cfg.JWTSecret
+	cfg.Mu.Unlock()
+
+	// Define the claims struct
+	claims := &jwt.RegisteredClaims{}
+
+	// Parse and validate the JWT token
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(JWTSecret), nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, `{"error": "Invalid or expired access token"}`, http.StatusUnauthorized)
+		return
+	}
+
+	// Extract the user ID (authorID) from the JWT claims
+	authorID, err := strconv.Atoi(claims.Subject)
+	if err != nil {
+		http.Error(w, `{"error": "Invalid token subject"}`, http.StatusUnauthorized)
+		return
+	}
+
+	// Set the chirp's AuthorID
+	chirp.AuthorID = authorID
+
+	mutex.Lock()
+	chirp.SetID(chirpsID) // Use the setter method
+	chirpsID++
+	mutex.Unlock()
+
+	if err := handlers.AddDataToDatabase(w, chirp, "chirps"); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to save chirp: %v"}`, err), http.StatusInternalServerError)
+		mutex.Lock()
+		chirpsID--
+		mutex.Unlock()
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	// Include ID in the response explicitly
+	response := map[string]interface{}{
+		"id":        chirp.GetID(),
+		"body":      chirp.Body,
+		"author_id": chirp.AuthorID,
+	}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
+	}
+}
+
+func (cfg *ApiConfig) HandlerDeleteChirps(w http.ResponseWriter, r *http.Request) {
+	// Extract the chirp ID from the URL path
+	chirpIDStr := strings.TrimPrefix(r.URL.Path, "/api/chirps/")
+	fmt.Printf("Chirp ID: %s\n", chirpIDStr)
+
+	// Extract the access token from the Authorization header
+	authHeader := r.Header.Get("Authorization")
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		http.Error(w, `{"error": "Invalid or missing Authorization header"}`, http.StatusUnauthorized)
+		return
+	}
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	fmt.Printf("Token: %s\n", tokenString)
+
+	cfg.Mu.Lock()
+	JWTSecret := cfg.JWTSecret
+	cfg.Mu.Unlock()
+
+	// Define the claims struct
+	claims := &jwt.RegisteredClaims{}
+
+	// Parse and validate the JWT token
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(JWTSecret), nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, `{"error": "Invalid or expired access token"}`, http.StatusUnauthorized)
+		return
+	}
+
+	// Extract the user ID (authorID) from the JWT claims
+	authorID, err := strconv.Atoi(claims.Subject)
+	if err != nil {
+		http.Error(w, `{"error": "Invalid token subject"}`, http.StatusUnauthorized)
+		return
+	}
+
+	// Define the file path to the database
+	filePath := "database.json"
+
+	// Initialize a map to hold the data from the database
+	var database handlers.Database
+
+	// Read the database file
+	fileBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to read database: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	// Parse the JSON data
+	if err := json.Unmarshal(fileBytes, &database); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to parse database: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	// Extract the "chirps" map
+	chirps := database.Chirps
+
+	// Find the chirp by ID
+	chirp, exists := chirps[chirpIDStr]
+	if !exists {
+		http.Error(w, `{"error": "Chirp not found"}`, http.StatusNotFound)
+		return
+	}
+	fmt.Printf("Chirp: %+v\n", chirp)
+
+	fmt.Printf("Chirp author id: %d\n", chirp.AuthorID)
+
+	// Check if the chirp's author ID matches the token's author ID
+	if chirp.AuthorID != authorID {
+		http.Error(w, `{"error": "Forbidden: You do not have permission to delete this chirp"}`, http.StatusForbidden)
+		return
+	}
+
+	delete(chirps, chirpIDStr)
+
+	// Write the updated database back to the file
+	updatedDatabase, err := json.MarshalIndent(database, "", "  ")
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to marshal database: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	if err := os.WriteFile(filePath, updatedDatabase, 0644); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to write database: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	// Return a success response
+	w.WriteHeader(http.StatusNoContent)
+}

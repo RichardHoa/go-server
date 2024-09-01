@@ -3,9 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
-	"net/http"
 )
 
 func ReplaceSensitiveWords(text string) string {
@@ -39,7 +39,7 @@ func endsWithPunctuation(word string) bool {
 	return len(word) > 0 && strings.ContainsAny(word[len(word)-1:], ".,!?")
 }
 
-func addDataToDatabase(w http.ResponseWriter,data DataPoint, category string) error {
+func AddDataToDatabase(w http.ResponseWriter, data DataPoint, category string) error {
 	// Define the file path
 	filePath := "database.json"
 	// fmt.Printf("Chirp inside function: %+v\n", chirp)

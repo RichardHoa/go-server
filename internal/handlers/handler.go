@@ -3,18 +3,17 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
-	chirpsID = 1
-	usersID  = 1
-	mutex    sync.Mutex
+	usersID = 1
+	mutex   sync.Mutex
 )
 
 // HandlerReadiness handles the /healthz endpoint
@@ -22,39 +21,6 @@ func HandlerReadiness(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(http.StatusText(http.StatusOK)))
-}
-
-func HandlerAddChirps(w http.ResponseWriter, r *http.Request) {
-	var chirp Chirp
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&chirp); err != nil {
-		http.Error(w, `{"error": "Invalid JSON"}`, http.StatusBadRequest)
-		return
-	}
-
-	mutex.Lock()
-	chirp.SetID(chirpsID) // Use the setter method
-	chirpsID++
-	mutex.Unlock()
-
-	if err := addDataToDatabase(w, chirp, "chirps"); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error": "Failed to save chirp: %v"}`, err), http.StatusInternalServerError)
-		mutex.Lock()
-		chirpsID--
-		mutex.Unlock()
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	// Include ID in the response explicitly
-	response := map[string]interface{}{
-		"id":   chirp.GetID(),
-		"body": chirp.Body,
-	}
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
-	}
 }
 
 func HandlerGetChirps(w http.ResponseWriter, r *http.Request) {
@@ -80,9 +46,7 @@ func HandlerGetChirps(w http.ResponseWriter, r *http.Request) {
 	}
 	// Parse the JSON file content into a map
 	var jsonData struct {
-		Chirps map[string]struct {
-			Body string `json:"body"`
-		} `json:"chirps"`
+		Chirps map[string]Chirp `json:"chirps"`
 	}
 
 	if err := json.Unmarshal(fileBytes, &jsonData); err != nil {
@@ -92,21 +56,16 @@ func HandlerGetChirps(w http.ResponseWriter, r *http.Request) {
 
 	// Convert the map to a slice of Chirp structs
 	chirpsArray := []Chirp{}
-	for idString, chirpData := range jsonData.Chirps {
+	for _ , chirpData := range jsonData.Chirps {
 
-		id, err := strconv.Atoi(idString)
-		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error": "Invalid chirp ID: %v"}`, err), http.StatusInternalServerError)
-			return
-		}
 		chirp := Chirp{
+			ID: chirpData.ID,
 			Body: chirpData.Body,
+			AuthorID: chirpData.AuthorID,
 		}
-		chirp.SetID(id)
-
+		
 		// Append the chirp to the array with the correct ID and body
 		chirpsArray = append(chirpsArray, chirp)
-		// fmt.Printf("Chirps: %v\n", chirpsArray)
 	}
 
 	// Set the response headers and write the JSON array of chirps
@@ -207,7 +166,7 @@ func HandlerAddUser(w http.ResponseWriter, r *http.Request) {
 	usersID++
 	mutex.Unlock()
 
-	if err := addDataToDatabase(w, user, "users"); err != nil {
+	if err := AddDataToDatabase(w, user, "users"); err != nil {
 		http.Error(w, fmt.Sprintf(`{"error": "Failed to save chirp: %v"}`, err), http.StatusInternalServerError)
 		mutex.Lock()
 		usersID--
@@ -226,5 +185,3 @@ func HandlerAddUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
 	}
 }
-
-

@@ -20,7 +20,7 @@ func ConfigureRoutes(mux *http.ServeMux, apiCfg *config.ApiConfig) {
 
 	mux.HandleFunc("GET /admin/metrics", apiCfg.HandlerMetricsHTML)	
 
-	mux.HandleFunc("POST /api/chirps", handlers.HandlerAddChirps)
+	mux.HandleFunc("POST /api/chirps", apiCfg.HandlerAddChirps)
 
 	mux.HandleFunc("GET /api/chirps", handlers.HandlerGetChirps)
 
@@ -35,4 +35,6 @@ func ConfigureRoutes(mux *http.ServeMux, apiCfg *config.ApiConfig) {
 	mux.HandleFunc("POST /api/refresh", apiCfg.HandlerRefreshToken)
 
 	mux.HandleFunc("POST /api/revoke", apiCfg.HandlerRevokeToken)
+
+	mux.HandleFunc("DELETE /api/chirps/", apiCfg.HandlerDeleteChirps)
 }
