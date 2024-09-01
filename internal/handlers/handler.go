@@ -3,12 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -56,17 +57,47 @@ func HandlerGetChirps(w http.ResponseWriter, r *http.Request) {
 
 	// Convert the map to a slice of Chirp structs
 	chirpsArray := []Chirp{}
-	for _ , chirpData := range jsonData.Chirps {
+	for _, chirpData := range jsonData.Chirps {
 
 		chirp := Chirp{
-			ID: chirpData.ID,
-			Body: chirpData.Body,
+			ID:       chirpData.ID,
+			Body:     chirpData.Body,
 			AuthorID: chirpData.AuthorID,
 		}
-		
+
 		// Append the chirp to the array with the correct ID and body
 		chirpsArray = append(chirpsArray, chirp)
 	}
+
+	// Filter by author_id if provided
+	authorIDStr := r.URL.Query().Get("author_id")
+	if authorIDStr != "" {
+		authorID, err := strconv.Atoi(authorIDStr)
+		if err != nil {
+			http.Error(w, `{"error": "Invalid author_id format"}`, http.StatusBadRequest)
+			return
+		}
+		var filteredChirps []Chirp
+		for _, chirp := range chirpsArray {
+			if chirp.AuthorID == authorID {
+				filteredChirps = append(filteredChirps, chirp)
+			}
+		}
+		chirpsArray = filteredChirps
+	}
+	// Determine the sorting order from the query parameter
+	sortOrder := r.URL.Query().Get("sort")
+	if sortOrder == "" {
+		sortOrder = "asc" // Default to ascending order
+	}
+
+	// Sort chirps by ID
+	sort.Slice(chirpsArray, func(i, j int) bool {
+		if sortOrder == "desc" {
+			return chirpsArray[i].ID > chirpsArray[j].ID
+		}
+		return chirpsArray[i].ID < chirpsArray[j].ID
+	})
 
 	// Set the response headers and write the JSON array of chirps
 	w.Header().Set("Content-Type", "application/json")
@@ -178,8 +209,8 @@ func HandlerAddUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	// Include ID in the response explicitly
 	response := map[string]interface{}{
-		"id":    user.GetID(),
-		"email": user.Email,
+		"id":            user.GetID(),
+		"email":         user.Email,
 		"is_chirpy_red": user.IsChirpyRed,
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
