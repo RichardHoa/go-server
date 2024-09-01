@@ -37,4 +37,6 @@ func ConfigureRoutes(mux *http.ServeMux, apiCfg *config.ApiConfig) {
 	mux.HandleFunc("POST /api/revoke", apiCfg.HandlerRevokeToken)
 
 	mux.HandleFunc("DELETE /api/chirps/", apiCfg.HandlerDeleteChirps)
+
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.HandlerPolkaWebhooks)
 }

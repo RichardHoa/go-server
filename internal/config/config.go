@@ -20,6 +20,7 @@ import (
 type ApiConfig struct {
 	FileserverHits int
 	JWTSecret      string
+	PolkaAPIKey    string
 	Mu             sync.Mutex // Mutex to ensure safe concurrent access to FileserverHits
 }
 
@@ -95,7 +96,6 @@ func (cfg *ApiConfig) HandlerAuthenticateUser(w http.ResponseWriter, r *http.Req
 	filePath := "database.json"
 
 	// Define a struct for the entire database
-
 
 	// Initialize the database struct
 	var database handlers.Database
@@ -188,8 +188,9 @@ func (cfg *ApiConfig) HandlerAuthenticateUser(w http.ResponseWriter, r *http.Req
 			response := map[string]interface{}{
 				"id":            storedUser.GetID(),
 				"email":         storedUser.GetUniqueIdentifier(),
-				"token":         tokenString,
 				"refresh_token": refreshToken,
+				"token":         tokenString,
+				"is_chirpy_red": storedUser.IsChirpyRed,
 			}
 
 			w.Header().Set("Content-Type", "application/json")
@@ -201,7 +202,6 @@ func (cfg *ApiConfig) HandlerAuthenticateUser(w http.ResponseWriter, r *http.Req
 	// If no user is found with the given email
 	http.Error(w, `{"error": "User email does not exist"}`, http.StatusNotFound)
 }
-
 
 func (cfg *ApiConfig) HandlerPutUser(w http.ResponseWriter, r *http.Request) {
 	// Ensure the method is PUT
@@ -622,7 +622,6 @@ func (cfg *ApiConfig) HandlerDeleteChirps(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-
 	// Check if the chirp's author ID matches the token's author ID
 	if chirp.AuthorID != authorID {
 		http.Error(w, `{"error": "Forbidden: You do not have permission to delete this chirp"}`, http.StatusForbidden)
@@ -645,4 +644,87 @@ func (cfg *ApiConfig) HandlerDeleteChirps(w http.ResponseWriter, r *http.Request
 
 	// Return a success response
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (cfg *ApiConfig) HandlerPolkaWebhooks(w http.ResponseWriter, r *http.Request) {
+
+	authHeader := r.Header.Get("Authorization")
+	expectedPrefix := "ApiKey "
+
+	if !strings.HasPrefix(authHeader, expectedPrefix) || authHeader[len(expectedPrefix):] != cfg.PolkaAPIKey {
+		http.Error(w, `{"error": "Unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	type WebhookRequest struct {
+		Event string `json:"event"`
+		Data  struct {
+			UserID int `json:"user_id"`
+		} `json:"data"`
+	}
+
+	var webhookReq WebhookRequest
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&webhookReq); err != nil {
+		http.Error(w, `{"error": "Invalid JSON"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Check if the event is "user.upgraded", otherwise return 204
+	if webhookReq.Event != "user.upgraded" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// Define the file path to the database
+	filePath := "database.json"
+
+	// Initialize a map to hold the data from the database
+	var database handlers.Database
+
+	// Read the database file
+	fileBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to read database: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	// Parse the JSON data
+	if err := json.Unmarshal(fileBytes, &database); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to parse database: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	// Extract the "users" map
+	users := database.Users
+
+	// Find the user by user_id from the webhook data
+	userID := fmt.Sprintf("%d", webhookReq.Data.UserID)
+	user, exists := users[userID]
+	if !exists {
+		http.Error(w, `{"error": "User not found"}`, http.StatusNotFound)
+		return
+	}
+
+	// Update the user's IsChirpyRed field
+	user.IsChirpyRed = true
+
+	// Update the database with the modified user
+	users[userID] = user
+	database.Users = users
+
+	// Write the updated data back to the database
+	fileBytes, err = json.Marshal(database)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to serialize database: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to write database: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	// Respond with a 204 status code
+	w.WriteHeader(http.StatusNoContent)
+
 }

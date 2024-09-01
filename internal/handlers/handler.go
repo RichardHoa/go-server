@@ -180,6 +180,7 @@ func HandlerAddUser(w http.ResponseWriter, r *http.Request) {
 	response := map[string]interface{}{
 		"id":    user.GetID(),
 		"email": user.Email,
+		"is_chirpy_red": user.IsChirpyRed,
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)

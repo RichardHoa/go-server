@@ -22,6 +22,7 @@ func main() {
 	// Initialize apiConfig
 	apiCfg := &config.ApiConfig{
 		JWTSecret: os.Getenv("JWT_SECRET"),
+		PolkaAPIKey: os.Getenv("POLKA_API_KEY"),
 	}
 
 	// Create a new ServeMux
