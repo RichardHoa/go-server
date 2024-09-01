@@ -26,5 +26,5 @@ func ConfigureRoutes(mux *http.ServeMux, apiCfg *config.ApiConfig) {
 
 	mux.HandleFunc("GET /api/chirps/", handlers.HandlerGetChirpsID)
 
-	// mux.HandleFunc("POST /api/users", handlers.HandlerAddUser)
+	mux.HandleFunc("POST /api/users", handlers.HandlerAddUser)
 }

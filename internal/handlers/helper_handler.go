@@ -45,7 +45,11 @@ func addDataToDatabase(data DataPoint, category string) error {
 
 	// Initialize an empty map to hold the chirps
 	database := map[string]map[string]interface{}{
-		"chirps": {},
+		category: {},
+	}
+
+	if database[category] == nil {
+		database[category] = make(map[string]interface{})
 	}
 
 	// Check if the file exists

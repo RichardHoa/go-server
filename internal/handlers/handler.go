@@ -183,3 +183,41 @@ func HandlerGetChirpsID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf(`{"error": "Error encoding response: %v"}`, err), http.StatusInternalServerError)
 	}
 }
+
+func HandlerAddUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+	
+	var user User
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&user); err != nil {
+		http.Error(w, `{"error": "Invalid JSON"}`, http.StatusBadRequest)
+		return
+	}
+
+	mutex.Lock()
+	user.ID = usersID // Use the setter method
+	usersID++
+	mutex.Unlock()
+
+	// fmt.Printf("Chirp: %+v\n", chirp)
+	// Access ID with chirp.GetID() when needed
+
+	if err := addDataToDatabase(user, "users"); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to save chirp: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	// Include ID in the response explicitly
+	response := map[string]interface{}{
+		"id":   user.GetID(),
+		"email": user.Email,
+	}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
+	}
+}
