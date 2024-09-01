@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"net/http"
 )
 
 func ReplaceSensitiveWords(text string) string {
@@ -38,7 +39,7 @@ func endsWithPunctuation(word string) bool {
 	return len(word) > 0 && strings.ContainsAny(word[len(word)-1:], ".,!?")
 }
 
-func addDataToDatabase(data DataPoint, category string) error {
+func addDataToDatabase(w http.ResponseWriter,data DataPoint, category string) error {
 	// Define the file path
 	filePath := "database.json"
 	// fmt.Printf("Chirp inside function: %+v\n", chirp)
@@ -61,6 +62,14 @@ func addDataToDatabase(data DataPoint, category string) error {
 		}
 		if err := json.Unmarshal(fileBytes, &database); err != nil {
 			return fmt.Errorf("could not unmarshal JSON: %v", err)
+		}
+	}
+
+	for _, entry := range database[category] {
+		existingUser, ok := entry.(map[string]interface{})
+		if ok && existingUser["email"] == data.GetUniqueIdentifier() {
+			http.Error(w, `{"error": "user email already exists"}`, http.StatusBadRequest)
+			return fmt.Errorf("user email already exists")
 		}
 	}
 

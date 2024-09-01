@@ -3,23 +3,18 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"os"
 	"strconv"
-	"sync"
 	"strings"
-	
+	"sync"
 )
-
-
-
-
-
 
 var (
 	chirpsID = 1
 	usersID  = 1
-	mutex     sync.Mutex
+	mutex    sync.Mutex
 )
 
 // HandlerReadiness handles the /healthz endpoint
@@ -42,13 +37,17 @@ func HandlerAddChirps(w http.ResponseWriter, r *http.Request) {
 	chirpsID++
 	mutex.Unlock()
 
-	// fmt.Printf("Chirp: %+v\n", chirp)
-	// Access ID with chirp.GetID() when needed
 
-	if err := addDataToDatabase(chirp, "chirps"); err != nil {
+	if err := addDataToDatabase(w,chirp, "chirps"); err != nil {
 		http.Error(w, fmt.Sprintf(`{"error": "Failed to save chirp: %v"}`, err), http.StatusInternalServerError)
+		mutex.Lock()
+		chirpsID--
+		mutex.Unlock()
 		return
 	}
+
+
+
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -189,7 +188,7 @@ func HandlerAddUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
-	
+
 	var user User
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&user); err != nil {
@@ -197,24 +196,37 @@ func HandlerAddUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Hash the user's password using bcrypt
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, `{"error": "Failed to hash password"}`, http.StatusInternalServerError)
+		return
+	}
+
+	// Update the user's password with the hashed password
+	user.Password = string(hashedPassword)
+
 	mutex.Lock()
 	user.ID = usersID // Use the setter method
 	usersID++
 	mutex.Unlock()
 
-	// fmt.Printf("Chirp: %+v\n", chirp)
-	// Access ID with chirp.GetID() when needed
 
-	if err := addDataToDatabase(user, "users"); err != nil {
+	if err := addDataToDatabase(w ,user, "users"); err != nil {
 		http.Error(w, fmt.Sprintf(`{"error": "Failed to save chirp: %v"}`, err), http.StatusInternalServerError)
+		mutex.Lock()
+		usersID--
+		mutex.Unlock()
 		return
 	}
+
+
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	// Include ID in the response explicitly
 	response := map[string]interface{}{
-		"id":   user.GetID(),
+		"id":    user.GetID(),
 		"email": user.Email,
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
