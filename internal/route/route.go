@@ -33,4 +33,6 @@ func ConfigureRoutes(mux *http.ServeMux, apiCfg *config.ApiConfig) {
 	mux.HandleFunc("PUT /api/users", apiCfg.HandlerPutUser)
 
 	mux.HandleFunc("POST /api/refresh", apiCfg.HandlerRefreshToken)
+
+	mux.HandleFunc("POST /api/revoke", apiCfg.HandlerRevokeToken)
 }

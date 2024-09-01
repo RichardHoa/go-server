@@ -392,3 +392,83 @@ func (cfg *ApiConfig) HandlerRefreshToken(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
+
+func (cfg *ApiConfig) HandlerRevokeToken(w http.ResponseWriter, r *http.Request) {
+	// Ensure the method is POST
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract the refresh token from the Authorization header
+	authHeader := r.Header.Get("Authorization")
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		http.Error(w, `{"error": "Invalid or missing Authorization header"}`, http.StatusUnauthorized)
+		return
+	}
+	refreshTokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+	// Define the file path to the database
+	filePath := "database.json"
+
+	// Initialize a map to hold the data from the database
+	database := map[string]map[string]handlers.User{}
+
+	// Read the database file
+	fileBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to read database: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	// Parse the JSON data
+	if err := json.Unmarshal(fileBytes, &database); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to parse database: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	// Extract the "users" map
+	users := database["users"]
+
+	// Find and update the user with the given refresh token
+	var userUpdated bool
+	for id, user := range users {
+		if user.RefreshToken == refreshTokenString {
+			// Check if the refresh token has expired
+			if time.Now().UTC().After(user.RefreshTokenExpiresAt) {
+				http.Error(w, `{"error": "Refresh token expired"}`, http.StatusUnauthorized)
+				return
+			}
+
+			// Remove the refresh token and reset the expiration
+			user.RefreshToken = ""
+			user.RefreshTokenExpiresAt = time.Time{}
+
+			// Update the user in the map
+			users[id] = user
+			userUpdated = true
+			break
+		}
+	}
+
+	if !userUpdated {
+		http.Error(w, `{"error": "Invalid or non-existent refresh token"}`, http.StatusUnauthorized)
+		return
+	}
+
+	// Update the database file with the removed refresh token
+	database["users"] = users
+	fileBytes, err = json.Marshal(database)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to serialize database: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "Failed to write database: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	// Respond with 204 No Content
+	w.WriteHeader(http.StatusNoContent)
+}
+
