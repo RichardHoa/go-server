@@ -37,17 +37,13 @@ func HandlerAddChirps(w http.ResponseWriter, r *http.Request) {
 	chirpsID++
 	mutex.Unlock()
 
-
-	if err := addDataToDatabase(w,chirp, "chirps"); err != nil {
+	if err := addDataToDatabase(w, chirp, "chirps"); err != nil {
 		http.Error(w, fmt.Sprintf(`{"error": "Failed to save chirp: %v"}`, err), http.StatusInternalServerError)
 		mutex.Lock()
 		chirpsID--
 		mutex.Unlock()
 		return
 	}
-
-
-
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -211,16 +207,13 @@ func HandlerAddUser(w http.ResponseWriter, r *http.Request) {
 	usersID++
 	mutex.Unlock()
 
-
-	if err := addDataToDatabase(w ,user, "users"); err != nil {
+	if err := addDataToDatabase(w, user, "users"); err != nil {
 		http.Error(w, fmt.Sprintf(`{"error": "Failed to save chirp: %v"}`, err), http.StatusInternalServerError)
 		mutex.Lock()
 		usersID--
 		mutex.Unlock()
 		return
 	}
-
-
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -233,3 +226,5 @@ func HandlerAddUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
 	}
 }
+
+

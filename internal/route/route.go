@@ -27,4 +27,10 @@ func ConfigureRoutes(mux *http.ServeMux, apiCfg *config.ApiConfig) {
 	mux.HandleFunc("GET /api/chirps/", handlers.HandlerGetChirpsID)
 
 	mux.HandleFunc("POST /api/users", handlers.HandlerAddUser)
+
+	mux.HandleFunc("POST /api/login", apiCfg.HandlerAuthenticateUser)
+
+	mux.HandleFunc("PUT /api/users", apiCfg.HandlerPutUser)
+
+	mux.HandleFunc("POST /api/refresh", apiCfg.HandlerRefreshToken)
 }

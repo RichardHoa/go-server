@@ -5,14 +5,24 @@ import (
 	"net/http"
 	"github.com/RichardHoa/go-server/internal/config"
 	"github.com/RichardHoa/go-server/internal/route"
+	"github.com/joho/godotenv"
+	"os"
 
 )
 
 func main() {
+
+	err := godotenv.Load()
+	if err != nil {
+	  log.Fatal("Error loading .env file")
+	}
+
 	const port = "8080"
 
 	// Initialize apiConfig
-	apiCfg := &config.ApiConfig{}
+	apiCfg := &config.ApiConfig{
+		JWTSecret: os.Getenv("JWT_SECRET"),
+	}
 
 	// Create a new ServeMux
 	mux := http.NewServeMux()
