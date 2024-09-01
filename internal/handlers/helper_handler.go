@@ -19,13 +19,11 @@ func ReplaceSensitiveWords(text string) string {
 	words := strings.Fields(text)
 	for i, word := range words {
 		// Check for punctuation at the end of the word
-		// fmt.Printf("Word: %s\n", word)
 		if endsWithPunctuation(word) {
 			// fmt.Println("Word has been skip")
 			continue
 		}
 		if _, found := wordsToReplace[strings.ToLower(word)]; found {
-			// fmt.Println("Word need to be replaced")
 			// Replace the word if it should be replaced
 			words[i] = strings.ReplaceAll(word, word, "****")
 		}
@@ -42,8 +40,6 @@ func endsWithPunctuation(word string) bool {
 func AddDataToDatabase(w http.ResponseWriter, data DataPoint, category string) error {
 	// Define the file path
 	filePath := "database.json"
-	// fmt.Printf("Chirp inside function: %+v\n", chirp)
-
 	// Initialize an empty map to hold the chirps
 	database := map[string]map[string]interface{}{
 		category: {},

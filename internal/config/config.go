@@ -561,7 +561,6 @@ func (cfg *ApiConfig) HandlerAddChirps(w http.ResponseWriter, r *http.Request) {
 func (cfg *ApiConfig) HandlerDeleteChirps(w http.ResponseWriter, r *http.Request) {
 	// Extract the chirp ID from the URL path
 	chirpIDStr := strings.TrimPrefix(r.URL.Path, "/api/chirps/")
-	fmt.Printf("Chirp ID: %s\n", chirpIDStr)
 
 	// Extract the access token from the Authorization header
 	authHeader := r.Header.Get("Authorization")
@@ -570,7 +569,6 @@ func (cfg *ApiConfig) HandlerDeleteChirps(w http.ResponseWriter, r *http.Request
 		return
 	}
 	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	fmt.Printf("Token: %s\n", tokenString)
 
 	cfg.Mu.Lock()
 	JWTSecret := cfg.JWTSecret
@@ -623,9 +621,7 @@ func (cfg *ApiConfig) HandlerDeleteChirps(w http.ResponseWriter, r *http.Request
 		http.Error(w, `{"error": "Chirp not found"}`, http.StatusNotFound)
 		return
 	}
-	fmt.Printf("Chirp: %+v\n", chirp)
 
-	fmt.Printf("Chirp author id: %d\n", chirp.AuthorID)
 
 	// Check if the chirp's author ID matches the token's author ID
 	if chirp.AuthorID != authorID {
