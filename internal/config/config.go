@@ -241,7 +241,8 @@ func (cfg *ApiConfig) HandlerPutUser(w http.ResponseWriter, r *http.Request) {
 	filePath := "database.json"
 
 	// Initialize a map to hold the data from the database
-	database := map[string]map[string]handlers.User{}
+
+	var database handlers.Database
 
 	// Read the database file
 	fileBytes, err := os.ReadFile(filePath)
@@ -257,7 +258,7 @@ func (cfg *ApiConfig) HandlerPutUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Extract the "users" map
-	users := database["users"]
+	users := database.Users
 
 	// Find the user by ID
 	user, exists := users[userID]
@@ -292,7 +293,7 @@ func (cfg *ApiConfig) HandlerPutUser(w http.ResponseWriter, r *http.Request) {
 
 	// Save the updated user back to the database
 	users[userID] = user
-	database["users"] = users
+	database.Users = users
 
 	// Convert the database map back to JSON
 	updatedDatabaseBytes, err := json.Marshal(database)
@@ -382,7 +383,7 @@ func (cfg *ApiConfig) HandlerRefreshToken(w http.ResponseWriter, r *http.Request
 
 	// JWT token generation
 	secretKey := []byte(JWTSecret)
-	expiresInSeconds := 1 * 60 * 60 // 1 hour
+	expiresInSeconds := 1 * 60 * 60 
 
 	// Create the JWT claims
 	claims := jwt.RegisteredClaims{
