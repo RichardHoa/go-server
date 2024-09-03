@@ -6,7 +6,7 @@ This project is a Go server that provides a welcoming page at the `/app` endpoin
 
 # API Specification
 
-The API documentation for this project is stored in the [`docs` folder](./docs/API-GoServerBootdev.yaml) under the file name [`API-GoServerBootdev.yaml`](./docs/API-GoServerBootdev.yaml). You can view and interact with the API documentation using tools like Swagger UI, ReDoc, or any OpenAPI-compatible viewer.
+The API documentation for this project is stored in the [`docs` folder](./docs/) under the file name [`API-GoServerBootdev.yaml`](./docs/API-GoServerBootdev.yaml). You can view and interact with the API documentation using tools like Swagger UI, ReDoc, or any OpenAPI-compatible viewer.
 
 ## Viewing the API Documentation in Swagger UI
 
