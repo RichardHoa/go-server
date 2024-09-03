@@ -20,8 +20,8 @@ Ensure that you have Go installed on your system. You can download it from [Go's
 
 1. **Clone the repository** (if applicable):
    ```bash
-   git clone <repository-url>
-   cd <repository-directory>
+   git clone https://github.com/RichardHoa/go-server
+   cd go-server/
    ```
 2. **Remove any unnessary package**
     ```bash
