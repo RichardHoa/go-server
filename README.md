@@ -4,7 +4,7 @@
 
 This project is a Go server that provides a welcoming page at the `/app` endpoint. The server runs on `localhost:8080`.
 
-# API Specification
+## API Specification
 
 The API documentation for this project is stored in the [`docs` folder](./docs/) under the file name [`API-GoServerBootdev.yaml`](./docs/API-GoServerBootdev.yaml). You can view and interact with the API documentation using tools like Swagger UI, ReDoc, or any OpenAPI-compatible viewer.
 
