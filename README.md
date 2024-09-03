@@ -27,11 +27,12 @@ Ensure that you have Go installed on your system. You can download it from [Go's
     ```bash
     go mod tidy
     ```
-3. **Start the server on localhost:8080**
+3. **Start the server on localhost:8080** 
+- Run the program directly
     ```bash
     go run .
     ```
-Or build the program and run it directly
+- Build the program and run it
    ```bash
     go build .
     ./go-server
