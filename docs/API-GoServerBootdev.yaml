@@ -1,0 +1,581 @@
+openapi: 3.0.0
+info:
+  title: Go server Bootdev API
+  description: |
+    API documentation for go server project by boot dev
+    Please use localhost to test the system
+  contact:
+    name: Richard Hoa
+    email: richardhoa.work@gmail.com
+  version: 1.0.0
+servers:
+- url: localhost:8080
+  description: Localhost server
+  variables:
+    JWT_SECRET:
+      description: JWT secret
+      default: PH/SX0BqFRdd0r3fY97pHMmPm5Jc0nJ8blDA3Vi6JLUE4NTkN/kPcK0jMn3jHnCqooad4wpkrwOKK/8hXZfwlg==
+    POLKA_API_KEY:
+      description: API key for webhook
+      default: f271c81ff7084ee5b99a5091b42d486e
+security:
+- {}
+tags:
+- name: public user
+  description: "calls that any user can make, whether or not authenticated"
+- name: authenticated user
+  description: "User that has signed up for an account and login successfully, all the calls require token or refreshToken"
+paths:
+  /app:
+    get:
+      tags:
+      - public user
+      summary: Get main page
+      description: Get the main page
+      operationId: app
+      parameters: []
+      responses:
+        "200":
+          description: Landing page get created
+          content:
+            text/html:
+              schema:
+                type: object
+              examples:
+                Example 1:
+                  value: |-
+                    <html><head></head><body>
+                        <h1>Welcome to Chirpy</h1>
+                    </body></html>
+        "500":
+          description: Internal Server Error
+  /admin/metrics:
+    get:
+      tags:
+      - public user
+      summary: Get admin page
+      description: This admin pages provides the traffic information
+      operationId: get-admin-metrics
+      responses:
+        "2XX":
+          description: Success
+          content:
+            text/html:
+              schema:
+                type: object
+              examples:
+                Example 1:
+                  value: |-
+                    <html><head></head><body>
+                        <h1>Welcome, Chirpy Admin</h1>
+                        <p>Chirpy has been visited 6 times!</p>
+                    </body></html>
+  /api/healthz:
+    get:
+      tags:
+      - public user
+      summary: Get the health of the system
+      description: As the title
+      operationId: get-api
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Internal Server Error
+  /api/metrics:
+    get:
+      tags:
+      - public user
+      summary: Viewing website traffic
+      description: It counts how many times user has go to the /app link
+      operationId: get-api-metrics
+      responses:
+        "2XX":
+          description: ""
+          content:
+            text/plain:
+              schema:
+                type: object
+              examples:
+                Example 1:
+                  value:
+                    Hits: 5
+  /api/reset:
+    get:
+      tags:
+      - public user
+      summary: Reset the traffic count
+      description: It resets the number of times website (/app) has been views to 0
+      operationId: get-api-reset
+      responses:
+        "500":
+          description: Internal Server Error
+        "2XX":
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: object
+              examples:
+                Example 1:
+                  value: Hits reset to 0
+  /api/users:
+    put:
+      tags:
+      - authenticated user
+      summary: Change user email
+      description: Require token from login api
+      operationId: put-api-users
+      parameters:
+      - name: Bearer
+        in: header
+        description: token from login api
+        required: false
+        style: simple
+        explode: false
+        schema:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiIyIiwiZXhwIjoxNzI1Mjg3MDgxLCJpYXQiOjE3MjUyODM0ODF9.0rdlS4KL8Rb6HggYPnCkkhYUhdGhBXmBfywqCmSOWXc
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/api_users_body'
+            examples:
+              Example 1:
+                value:
+                  email: helloChangedEmail@gmail.com
+                  password: ExamplePassword
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200'
+              examples:
+                Example 1:
+                  value:
+                    email: helloChangedEmail@gmail.com
+                    id: 2
+    post:
+      tags:
+      - public user
+      summary: Register new user
+      description: Register new user
+      operationId: post-api-users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/api_users_body_1'
+            examples:
+              Example 1:
+                value:
+                  email: example@gmail.com
+                  password: examplePassword
+      responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_400'
+              examples:
+                Example 1:
+                  value:
+                    error: user email already exists
+        "500":
+          description: Internal Server Error
+        "2XX":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_2XX'
+              examples:
+                Example 1:
+                  value:
+                    email: hellothere@gmail.com
+                    id: 2
+                    is_chirpy_red: false
+  /api/login:
+    post:
+      tags:
+      - public user
+      summary: Log in user
+      operationId: post-api-login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/api_login_body'
+            examples:
+              Example 1:
+                value:
+                  email: hellothere@gmail.com
+                  password: ExamplePassword
+      responses:
+        "2XX":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_2XX_1'
+              examples:
+                Example 1:
+                  value:
+                    email: hellothere@gmail.com
+                    id: 2
+                    is_chirpy_red: false
+                    refresh_token: a471ff8df371c381768a29fdf1541070f979387e61f143086eb5b82556ae63be
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiIyIiwiZXhwIjoxNzI1Mjg3MDgxLCJpYXQiOjE3MjUyODM0ODF9.0rdlS4KL8Rb6HggYPnCkkhYUhdGhBXmBfywqCmSOWXc
+  /api/chirps:
+    get:
+      tags:
+      - public user
+      summary: Get all the chirps
+      operationId: get-api-chirps
+      parameters:
+      - name: author_id
+        in: query
+        description: Get all the chirps belong to one author
+        required: false
+        style: form
+        explode: true
+        schema:
+          minimum: 1
+          type: integer
+          example: 1
+      - name: sort
+        in: query
+        description: Sort the chirps based on their ID
+        required: false
+        allowEmptyValue: true
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: desc
+          default: asc
+          enum:
+          - asc
+          - desc
+      responses:
+        "2XX":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/inline_response_2XX_2'
+                x-examples:
+                  Example 1:
+                  - id: 1
+                    body: I'm the one who knocks!
+                    author_id: 1
+                  - id: 2
+                    body: Gale!
+                    author_id: 1
+                  - id: 3
+                    body: Cmon Pinkman
+                    author_id: 1
+                  - id: 4
+                    body: "Darn that fly, I just wanna cook"
+                    author_id: 1
+              examples:
+                Example 1:
+                  value:
+                  - id: 1
+                    body: body of a chirp
+                    author_id: 1
+                  - id: 2
+                    body: Welcome to the chirps
+                    author_id: 1
+    post:
+      tags:
+      - authenticated user
+      summary: "Add chirps to the database, requires token from login api"
+      description: This requires the Beader header with the token from login api
+      operationId: post-api-chirps
+      parameters:
+      - name: Bearer
+        in: header
+        description: token from login api
+        required: false
+        style: simple
+        explode: false
+        schema:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiIxIiwiZXhwIjoxNzI1Mjg2NTczLCJpYXQiOjE3MjUyODI5NzN9.HCjdU6w54j3JdbqgcptM2gIC9mRooVg7U2LZHqSU9tA
+      responses:
+        "200":
+          description: OK
+  /api/refresh:
+    post:
+      tags:
+      - authenticated user
+      summary: "Get new token, requires refreshToken from login api"
+      description: '**Require refreshToken from log in**'
+      operationId: post-api-refresh
+      responses:
+        "2XX":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_2XX_3'
+              examples:
+                Example 1:
+                  value:
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiIyIiwiZXhwIjoxNzI1Mjg3NTcxLCJpYXQiOjE3MjUyODM5NzF9.S4fm8LIieFLtQjVSW_My7dNvUOz3yrfgAugaP4fXgxw
+  /api/chirps/{ID}:
+    get:
+      tags:
+      - public user
+      summary: Get specific chirp
+      description: ""
+      operationId: get-api-chirps-ID
+      parameters:
+      - name: ID
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: Bearer
+        in: header
+        description: Token from log in
+        required: false
+        style: simple
+        explode: false
+        schema:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiIxIiwiZXhwIjoxNzI1Mjg4MTA0LCJpYXQiOjE3MjUyODQ1MDR9.IF3AKUrMa7BFs5Ckp4OwXOeI3dehaQbSAdxjtcU0WJo
+      responses:
+        "2XX":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_2XX_4'
+              examples:
+                Example 1:
+                  value:
+                    id: 2
+                    body: Chirps number 2
+                    author_id: 1
+    delete:
+      tags:
+      - authenticated user
+      summary: "Delete specific chirp, requires token from login api"
+      operationId: delete-api-chirps-ID
+      parameters:
+      - name: ID
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: Bearer
+        in: header
+        description: token from login
+        required: false
+        style: simple
+        explode: false
+        schema:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiIxIiwiZXhwIjoxNzI1Mjg4MTA0LCJpYXQiOjE3MjUyODQ1MDR9.IF3AKUrMa7BFs5Ckp4OwXOeI3dehaQbSAdxjtcU0WJo
+      responses:
+        "204":
+          description: No Content
+  /api/revoke:
+    post:
+      tags:
+      - authenticated user
+      summary: "Revoke refreshToken, requires token from login api"
+      description: This will delete the refresh Token of the user in the database
+      operationId: post-api-revoke
+      parameters:
+      - name: Bearer
+        in: header
+        description: Refresh Token from log in
+        required: false
+        style: simple
+        explode: false
+        schema:
+          type: string
+          example: c4b0151b8723ccc5bb115a614d7e369c1ee38468656766563533ec99e9d67e85
+      responses:
+        "204":
+          description: No Content
+  /api/polka/webhooks:
+    post:
+      tags:
+      - authenticated user
+      summary: "polka webhooks, requires apiKey from system"
+      description: Change the "is_chirpy_red" field in user to true if get "user.upgraded" event
+      operationId: post-api-polka-webhooks
+      parameters:
+      - name: apiKey
+        in: header
+        description: apiKey from polka
+        required: false
+        style: simple
+        explode: false
+        schema:
+          type: string
+          example: f271c81ff7084ee5b99a5091b42d486e
+      responses:
+        "2XX":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_2XX_5'
+              examples:
+                Example 1:
+                  value:
+                    Event: user.upgraded
+                    Data:
+                      userID: 1
+components:
+  schemas:
+    api_users_body:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      x-examples:
+        Example 1:
+          email: helloChangedEmail@gmail.com
+          password: ExamplePassword
+    inline_response_200:
+      type: object
+      properties:
+        email:
+          type: string
+        id:
+          type: integer
+      x-examples:
+        Example 1:
+          email: helloChangedEmail@gmail.com
+          id: 2
+    api_users_body_1:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      x-examples:
+        Example 1:
+          email: example@gmail.com
+          password: examplePassword
+    inline_response_400:
+      type: object
+      properties:
+        error:
+          type: string
+      x-examples:
+        Example 1:
+          error: user email already exists
+    inline_response_2XX:
+      type: object
+      properties:
+        email:
+          type: string
+        id:
+          type: integer
+        is_chirpy_red:
+          type: boolean
+      x-examples:
+        Example 1:
+          email: hellothere@gmail.com
+          id: 2
+          is_chirpy_red: false
+    api_login_body:
+      type: object
+      properties:
+        email:
+          type: string
+          x-stoplight:
+            id: p40yd7pdh9dfw
+        password:
+          type: string
+          x-stoplight:
+            id: gazbrze2g4jwl
+    inline_response_2XX_1:
+      type: object
+      properties:
+        email:
+          type: string
+        id:
+          type: integer
+        is_chirpy_red:
+          type: boolean
+        refresh_token:
+          type: string
+        token:
+          type: string
+      x-examples:
+        Example 1:
+          email: hellothere@gmail.com
+          id: 2
+          is_chirpy_red: false
+          refresh_token: a471ff8df371c381768a29fdf1541070f979387e61f143086eb5b82556ae63be
+          token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiIyIiwiZXhwIjoxNzI1Mjg3MDgxLCJpYXQiOjE3MjUyODM0ODF9.0rdlS4KL8Rb6HggYPnCkkhYUhdGhBXmBfywqCmSOWXc
+    inline_response_2XX_2:
+      type: object
+      properties:
+        id:
+          minimum: 1
+          type: integer
+        body:
+          type: string
+          example: This is a random string
+        author_id:
+          minimum: 1
+          type: integer
+    inline_response_2XX_3:
+      type: object
+      properties:
+        token:
+          type: string
+          x-stoplight:
+            id: hbslfheyxo3oe
+    inline_response_2XX_4:
+      type: object
+      properties:
+        id:
+          type: integer
+        body:
+          type: string
+        author_id:
+          type: integer
+      x-examples:
+        Example 1:
+          id: 2
+          body: Chirps number 2
+          author_id: 1
+    inline_response_2XX_5:
+      type: object
+      properties:
+        Event:
+          type: string
+          x-stoplight:
+            id: ko1xp4qxvo6rz
+        Data:
+          type: object
+          additionalProperties:
+            type: integer
+            x-stoplight:
+              id: 6jwu87ixsbvox
+          x-stoplight:
+            id: eqzaqhexd2bmu
+  securitySchemes: {}
