@@ -1,27 +1,26 @@
 package main
 
 import (
-	"log"
-	"net/http"
 	"github.com/RichardHoa/go-server/internal/config"
 	"github.com/RichardHoa/go-server/internal/route"
 	"github.com/joho/godotenv"
+	"log"
+	"net/http"
 	"os"
-
 )
 
 func main() {
 
 	err := godotenv.Load()
 	if err != nil {
-	  log.Fatal("Error loading .env file")
+		log.Fatal("Error loading .env file")
 	}
 
 	const port = "8080"
 
 	// Initialize apiConfig
 	apiCfg := &config.ApiConfig{
-		JWTSecret: os.Getenv("JWT_SECRET"),
+		JWTSecret:   os.Getenv("JWT_SECRET"),
 		PolkaAPIKey: os.Getenv("POLKA_API_KEY"),
 	}
 
@@ -38,5 +37,6 @@ func main() {
 	}
 
 	log.Printf("Serving files from %s on port: %s\n", ".", port)
+	log.Println("This server is intended for docker")
 	log.Fatal(server.ListenAndServe())
 }

@@ -383,7 +383,7 @@ func (cfg *ApiConfig) HandlerRefreshToken(w http.ResponseWriter, r *http.Request
 
 	// JWT token generation
 	secretKey := []byte(JWTSecret)
-	expiresInSeconds := 1 * 60 * 60 
+	expiresInSeconds := 1 * 60 * 60
 
 	// Create the JWT claims
 	claims := jwt.RegisteredClaims{

@@ -1,16 +1,16 @@
 package route
 
 import (
-	"net/http"
-	"path/filepath"
 	"github.com/RichardHoa/go-server/internal/config"
 	"github.com/RichardHoa/go-server/internal/handlers"
+	"net/http"
+	"path/filepath"
 )
 
 func ConfigureRoutes(mux *http.ServeMux, apiCfg *config.ApiConfig) {
 	fileServer := http.FileServer(http.Dir(filepath.Join(".")))
 
-	mux.Handle("/app/", apiCfg.MiddlewareMetricsInc(http.StripPrefix("/app", fileServer)))
+	mux.Handle("/", apiCfg.MiddlewareMetricsInc(http.StripPrefix("/", fileServer)))
 
 	mux.HandleFunc("GET /api/healthz", handlers.HandlerReadiness)
 
@@ -18,7 +18,7 @@ func ConfigureRoutes(mux *http.ServeMux, apiCfg *config.ApiConfig) {
 
 	mux.HandleFunc("GET /api/reset", apiCfg.HandlerReset)
 
-	mux.HandleFunc("GET /admin/metrics", apiCfg.HandlerMetricsHTML)	
+	mux.HandleFunc("GET /admin/metrics", apiCfg.HandlerMetricsHTML)
 
 	mux.HandleFunc("POST /api/chirps", apiCfg.HandlerAddChirps)
 
